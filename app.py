@@ -4,6 +4,12 @@ from agents.phidata_team import PhidataTeam
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+class ChatRequest(BaseModel):
+    message: str
+    
+    class Config:
+        arbitrary_types_allowed = True
+
 app = FastAPI(
     title="Analista de Mercado API",
     description="API para análise do mercado financeiro",
@@ -18,24 +24,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class ChatRequest(BaseModel):
-    user_id: str
-    message: str
+team = PhidataTeam()
 
-class ChatResponse(BaseModel):
-    response: str
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+@app.post("/chat")
+async def chat_endpoint(chat_request: ChatRequest):
     try:
-        team = PhidataTeam()
-        response = team.execute_query(request.message)
-        return ChatResponse(response=response)
+        if not chat_request.message:
+            raise HTTPException(
+                status_code=400,
+                detail="Mensagem é obrigatória"
+            )
+        
+        print(chat_request)
+        content = team.execute_query(chat_request.message)
+            
+        return {"response": content}
     
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing request: {str(e)}"
+            detail=f"Erro ao processar requisição: {str(e)}"
         )
 
 if __name__ == "__main__":
